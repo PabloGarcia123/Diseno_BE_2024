@@ -1,5 +1,6 @@
 package edu.uclm.es.sqe.http;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +22,7 @@ import edu.uclm.es.sqe.services.EcuacionesService;
 @RestController
 @RequestMapping("ecuaciones")
 @CrossOrigin("*")
-public class EcuacionesController {
+public class EcuacionesController extends CommonController{
 
 	@Autowired
 	private EcuacionesService service;
@@ -53,7 +54,28 @@ public class EcuacionesController {
 
 	@PutMapping("/generarHamiltoniano")
 	public Hamiltoniano generarHamiltoniano(@RequestBody List<Map<String, Object>> ecuaciones) {
-		return this.service.generarHamiltoniano(ecuaciones);
+		//String token = super.validarPeticion(req);
+		String token = req.getHeader("token");
+		if (token == null) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para acceder a este recurso");
+			
+		}
+		try{
+			if(!validarToken(token)){
+				throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token invalido");
+			}
+		}
+		catch(IOException e){
+			throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"El sistema de control de credenciales no esta disponible en este momento");
+		}
+		Hamiltoniano h = this.service.generarHamiltoniano(ecuaciones);
+		try {
+			super.save(token, h);
+		} catch (IOException e) {
+			throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "El sistema de almacenamiento no esta disponible en este momento");
+		}
+		
+		return h;
 	}
 
 }
